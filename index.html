@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <title>3D Dice Roller</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dice-size: 100px; /* CSS variable for dice size */
+            --dot-size: 20px;   /* CSS variable for dot size */
+            --dice-color: #1c6960; /* CSS variable for dice color */
+            --dot-color: #f83062; /* CSS variable for dot color */
+            --dice-roundness: 34px; /* NEW: CSS variable for dice roundness */
+            --options-result-btn-top-position: 5px;
+            --options-esult-btn-eitherside-position: 5px;
+            --button-vertical-spacing: 50px; /* Spacing between stacked buttons */
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #282c34;
+            overflow: hidden;
+            overflow-y: hidden;
+            font-family: 'Roboto', sans-serif;
+            color: white;
+            flex-direction: column;
+            cursor: pointer; /* Cursor indicates clickability */
+        }
+
+        .container {
+            perspective: 1000px; /* Defines the 3D space */
+        }
+        html, body, main {
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: contain;
+        }
+
+        .dice {
+            position: relative;
+            width: var(--dice-size);
+            height: var(--dice-size);
+            transform-style: preserve-3d; /* Crucial for 3D transforms */
+            transition: transform 1.5s ease-out; /* Smooth transition for the roll (initial value) */
+            border-radius: var(--dice-roundness); /* Use CSS variable for roundness */
+            background-color: var(--dice-color); /* NEW: Fill the main dice body with its color */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); /* Subtle shadow for depth */
+        }
+
+        .face {
+            position: absolute;
+            width: var(--dice-size);
+            height: var(--dice-size);
+            background: var(--dice-color); /* Use CSS variable for dice color */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box; /* Include padding/border in element's total width/height */
+            border-radius: var(--dice-roundness); /* Use CSS variable for roundness */
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1); /* Subtle inner shadow for a softer look */
+        }
+
+        /* Positioning and rotating each face based on dice size */
+        .front  { transform: rotateY(0deg) translateZ(calc(var(--dice-size) / 2)); }
+        .back   { transform: rotateY(180deg) translateZ(calc(var(--dice-size) / 2)); }
+        .right  { transform: rotateY(90deg) translateZ(calc(var(--dice-size) / 2)); }
+        .left   { transform: rotateY(-90deg) translateZ(calc(var(--dice-size) / 2)); }
+        .top    { transform: rotateX(90deg) translateZ(calc(var(--dice-size) / 2)); }
+        .bottom { transform: rotateX(-90deg) translateZ(calc(var(--dice-size) / 2)); }
+
+        /* General dot styling */
+        .dot {
+            position: absolute;
+            width: var(--dot-size); /* Use CSS variable for dot size */
+            height: var(--dot-size); /* Use CSS variable for dot size */
+            background: var(--dot-color); /* Use CSS variable for dot color */
+            border-radius: 50%;
+        }
+
+        /* Positioning for individual dots on each face (using percentages for better scaling) */
+        /* Face 1 */
+        .face1 .dot:nth-child(1) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+        /* Face 2 */
+        .face2 .dot:nth-child(1) { top: 15%; left: 15%; }
+        .face2 .dot:nth-child(2) { bottom: 15%; right: 15%; }
+
+        /* Face 3 */
+        .face3 .dot:nth-child(1) { top: 15%; left: 15%; }
+        .face3 .dot:nth-child(2) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .face3 .dot:nth-child(3) { bottom: 15%; right: 15%; }
+
+        /* Face 4 */
+        .face4 .dot:nth-child(1) { top: 15%; left: 15%; }
+        .face4 .dot:nth-child(2) { top: 15%; right: 15%; }
+        .face4 .dot:nth-child(3) { bottom: 15%; left: 15%; }
+        .face4 .dot:nth-child(4) { bottom: 15%; right: 15%; }
+
+        /* Face 5 */
+        .face5 .dot:nth-child(1) { top: 15%; left: 15%; }
+        .face5 .dot:nth-child(2) { top: 15%; right: 15%; }
+        .face5 .dot:nth-child(3) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .face5 .dot:nth-child(4) { bottom: 15%; left: 15%; }
+        .face5 .dot:nth-child(5) { bottom: 15%; right: 15%; }
+
+        /* Face 6 */
+        .face6 .dot:nth-child(1) { top: 15%; left: 15%; }
+        .face6 .dot:nth-child(2) { top: 15%; right: 15%; }
+        .face6 .dot:nth-child(3) { top: 50%; left: 15%; transform: translateY(-50%); }
+        .face6 .dot:nth-child(4) { top: 50%; right: 15%; transform: translateY(-50%); }
+        .face6 .dot:nth-child(5) { bottom: 15%; left: 15%; }
+        .face6 .dot:nth-child(6) { bottom: 15%; right: 15%; }
+
+        /* Options Menu Styling (Right Panel) */
+        .options-button {
+            position: absolute;
+            top: var(--options-result-btn-top-position);
+            right: var(--options-esult-btn-eitherside-position);
+            background: transparent;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            width: 40px;
+            height: 40px;
+            font-size: 1.5em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s ease, transform 0.3s ease;
+            z-index: 100; /* Ensure it's above other content */
+        }
+
+        .options-button:hover {
+            background: #2c3e50;
+            transform: scale(1.05);
+        }
+
+        .options-panel {
+            position: absolute;
+            top: 50px;
+            right: 0px;
+            width: 300px;
+            max-height: 100vh;
+            background-color: #34495e;
+            box-shadow: -8px 0 15px rgba(0, 0, 0, 0.3);
+            transform: translateX(100%);
+            transition: transform 0.4s ease-out;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 99;
+            border-top-left-radius: 1em;
+            border-bottom-left-radius: 1em;
+        }
+
+        .options-panel.active {
+            transform: translateX(0); /* Slide into view */
+        }
+
+        /* Result Analysis Panel Styling (Left Panel) */
+        .results-button {
+            position: absolute;
+            top: var(--options-result-btn-top-position);
+            left: var(--options-esult-btn-eitherside-position);
+            background: transparent;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            width: 40px;
+            height: 40px;
+            font-size: 1.5em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s ease, transform 0.3s ease;
+            z-index: 100; /* Ensure it's above other content */
+        }
+
+        .results-button:hover {
+            background: #2c3e50;
+            transform: scale(1.05);
+        }
+
+        .results-panel {
+            position: absolute; /* Default desktop position */
+            top: 100px; /* Adjusted to be below options */
+            left: 0;
+            width: 300px;
+            max-height: 100vh;
+            overflow-y: hidden;
+            background-color: #34495e;
+            box-shadow: 8px 0 15px rgba(0, 0, 0, 0.3);
+            transform: translateX(-100%); /* Default desktop slide-out */
+            transition: transform 0.4s ease-out;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 99;
+            border-top-right-radius: 1em;
+            border-bottom-right-radius: 1em;
+        }
+
+        .results-panel.active {
+            transform: translateX(0); /* Default desktop slide-in */
+        }
+
+        /* Monte Carlo Simulation Panel Styling (Left Panel, below Results) */
+        .monte-carlo-button {
+            position: absolute;
+            top: calc(var(--options-result-btn-top-position) + var(--button-vertical-spacing)); /* Position below results button */
+            left: var(--options-esult-btn-eitherside-position);
+            background: transparent;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            width: 40px;
+            height: 40px;
+            font-size: 1.5em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s ease, transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .monte-carlo-button:hover {
+            background: #2c3e50;
+            transform: scale(1.05);
+        }
+
+        .monte-carlo-panel {
+            position: absolute;
+            top: calc(62px + var(--button-vertical-spacing)); /* Adjusted to be below results panel when open */
+            left: 0;
+            width: 300px;
+            max-height: 100vh;
+            overflow-y: hidden;
+            background-color: #34495e;
+            box-shadow: 8px 0 15px rgba(0, 0, 0, 0.3);
+            transform: translateX(-100%);
+            transition: transform 0.4s ease-out;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 99;
+            border-top-right-radius: 1em;
+            border-bottom-right-radius: 1em;
+        }
+
+        .monte-carlo-panel.active {
+            transform: translateX(0);
+        }
+
+        .options-panel h2,
+        .options-panel p,
+        .results-panel h2,
+        .results-panel p,
+        .monte-carlo-panel h2,
+        .monte-carlo-panel p {
+            margin-block: 0px;
+        }
+        #diceRoundness {
+          margin-bottom: 1em;
+        }
+
+
+        /* Common Option Group Styling */
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-group label {
+            font-size: 1em;
+            margin-bottom: 0;
+        }
+
+        .option-group input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            background: #555;
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+
+        .option-group input[type="range"]:hover {
+            opacity: 1;
+        }
+
+        .option-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2ecc71;
+            cursor: pointer;
+        }
+
+        .option-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2ecc71;
+            cursor: pointer;
+        }
+
+        .option-group input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 5px;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .option-group input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .option-group input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 5px;
+        }
+
+        .option-group input[type="color"]::-moz-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .option-group input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-radius: 5px;
+        }
+
+        /* Input field for Monte Carlo */
+        .monte-carlo-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .monte-carlo-input-group input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            background-color: #4a627a;
+            color: white;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+
+        .monte-carlo-input-group button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            background-color: #2ecc71;
+            color: white;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            white-space: nowrap; /* Prevent button text from wrapping */
+        }
+
+        .monte-carlo-input-group button:hover {
+            background-color: #27ae60;
+        }
+
+
+        /* Roll output display */
+        #rollOutputDisplay {
+            position: absolute;
+            top: var(--options-result-btn-top-position);
+            left: 50%;
+            transform: translateX(-50%);
+            height: 36px;
+            font-size: 2em;
+            font-weight: bold;
+            color: #2ecc71;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 10px 15px;
+            border-radius: 10px;
+            z-index: 90;
+            min-width: 30px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+            display: none; /* Hidden by default */
+        }
+
+        /* Results Table Styling */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.95em;
+        }
+
+        .results-table th, .results-table td {
+            border: 1px solid #555;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .results-table th {
+            background-color: #2c3e50;
+            color: white;
+        }
+
+        .results-table td {
+            background-color: #4a627a;
+        }
+
+        /* * Media Query for Mobile Screens (max-width: 768px)
+         * Adjusts the Result Analysis Panel to the bottom
+         */
+        @media (max-width: 768px) {
+            .results-panel, .monte-carlo-panel {
+                top: auto; /* Remove top positioning */
+                bottom: 0; /* Position at the bottom */
+                left: 0;
+                width: 100%; /* Full width */
+                height: 40vh; /* 40% of viewport height, adjust as needed */
+                transform: translateY(100%); /* Slide from bottom when inactive */
+                box-shadow: 0 -8px 15px rgba(0, 0, 0, 0.3); /* Shadow on the top side */
+                border-top-left-radius: 1em; /* Apply radius to top corners */
+                border-top-right-radius: 1em;
+                border-bottom-left-radius: 0; /* Remove bottom corners radius */
+                border-bottom-right-radius: 0;
+                /* If content inside table might overflow, consider overflow-y: auto; here */
+                overflow-y: auto; /* Allow scrolling if table content overflows */
+            }
+
+            .results-panel.active, .monte-carlo-panel.active {
+                transform: translateY(0); /* Slide into view from bottom */
+            }
+
+            /* Optional: Adjust options panel for consistency on mobile */
+            .options-panel {
+                /* Can also be moved to bottom-right if desired, similar to results-panel */
+                /* For now, it remains top-right as per previous instructions */
+                top: 50px; /* Keep consistent with top-right */
+                right: 0;
+                max-height: 100vh; /* Ensure it uses full height */
+            }
+
+            /* Adjust button positions if they conflict, though current top-corner positions might be fine */
+            .options-button {
+                top: var(--options-result-btn-top-position);
+                right: var(--options-esult-btn-eitherside-position);
+            }
+            .results-button {
+                top: var(--options-result-btn-top-position);
+                left: var(--options-esult-btn-eitherside-position);
+            }
+            .monte-carlo-button {
+                top: calc(var(--options-result-btn-top-position) + var(--button-vertical-spacing));
+                left: var(--options-esult-btn-eitherside-position);
+            }
+            
+            /* Center the dice more effectively if panels are at top/bottom and it's a small screen */
+            .container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: calc(100vh - 40vh); /* Adjust height to fit above the results panel */
+                width: 100%;
+                margin-top: 50px; /* To prevent overlap with top buttons/output */
+                margin-bottom: 40vh; /* To prevent overlap with the bottom panel */
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="options-button" id="optionsButton" title="Open Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"></path></svg>
+    </button>
+
+    <div class="options-panel" id="optionsPanel">
+        <h2>Options</h2>
+         <div class="option-group">
+            <label>Show Roll Output:</label>
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <label>
+                    <input type="radio" name="rollOutput" value="hide" checked> Hide
+                </label>
+                <label>
+                    <input type="radio" name="rollOutput" value="show"> Show
+                </label>
+            </div>
+        </div>
+
+        <div class="option-group">
+            <label for="rollSpeed">Rolling Speed: <span id="rollSpeedValue">5</span></label>
+            <input type="range" id="rollSpeed" min="1" max="10" value="5">
+        </div>
+
+        <div class="option-group">
+            <label for="diceColor">Dice Color:</label>
+            <input type="color" id="diceColor" value="#1c6960">
+        </div>
+
+        <div class="option-group">
+            <label for="dotColor">Dot Color:</label>
+            <input type="color" id="dotColor" value="#f83062">
+        </div>
+
+        <div class="option-group">
+            <label for="dotSize">Dot Size: <span id="dotSizeValue">20px</span></label>
+            <input type="range" id="dotSize" min="10" max="50" value="30">
+        </div>
+
+        <div class="option-group">
+            <label for="diceSize">Dice Size: <span id="diceSizeValue">100px</span></label>
+            <input type="range" id="diceSize" min="50" max="200" value="160">
+        </div>
+
+        <div class="option-group">
+            <label for="diceRoundness">Dice Roundness: <span id="diceRoundnessValue">15px</span></label>
+            <input type="range" id="diceRoundness" min="0" max="50" value="32">
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="dice" id="dice">
+            <div class="face front face1" data-face="1">
+                <span class="dot"></span>
+            </div>
+            <div class="face back face6" data-face="6">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            <div class="face right face3" data-face="3">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            <div class="face left face4" data-face="4">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            <div class="face top face2" data-face="2">
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            <div class="face bottom face5" data-face="5">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="rollOutputDisplay"></div>
+
+    <button class="results-button" id="resultsButton" title="View Results">
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M80-120v-80h800v80H80Zm40-120v-280h120v280H120Zm200 0v-480h120v480H320Zm200 0v-360h120v360H520Zm200 0v-600h120v600H720Z"/></svg>
+    </button>
+
+    <button class="monte-carlo-button" id="monteCarloButton" title="Run Simulation">
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="m216-160-56-56 384-384H440v80h-80v-160h233q16 0 31 6t26 17l120 119q27 27 66 42t84 16v80q-62 0-112.5-19T718-476l-40-42-88 88 90 90-262 151-40-69 172-99-68-68-266 265Zm-96-280v-80h200v80H120ZM40-560v-80h200v80H40Zm739-80q-33 0-57-23.5T698-720q0-33 24-56.5t57-23.5q33 0 57 23.5t24 56.5q0 33-24 56.5T779-640Zm-659-40v-80h200v80H120Z"/></svg>
+    </button>
+
+    <div class="results-panel" id="resultsPanel">
+        <h2>Roll Analysis</h2>
+        <p>Total Rolls: <span id="totalRollsDisplay">0</span></p>
+         <p>Theoretical Probability: <span>1/6 = 16.67%</span></p>
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Count</th>
+                    <th>Probability</th>
+                </tr>
+            </thead>
+            <tbody id="resultsTableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div class="monte-carlo-panel" id="monteCarloPanel">
+        <h2>Monte Carlo Simulation</h2>
+        <div class="monte-carlo-input-group">
+            <input type="number" id="simulationCount" min="1" max="10000000" value="1000">
+            <button id="runSimulationButton">Run Simulation</button>
+        </div>
+    </div>
+
+    <script>
+        const root = document.documentElement;
+        const dice = document.getElementById('dice');
+        const optionsButton = document.getElementById('optionsButton');
+        const optionsPanel = document.getElementById('optionsPanel');
+        const rollSpeedSlider = document.getElementById('rollSpeed');
+        const rollSpeedValueSpan = document.getElementById('rollSpeedValue');
+        const diceColorPicker = document.getElementById('diceColor');
+        const dotColorPicker = document.getElementById('dotColor');
+        const dotSizeSlider = document.getElementById('dotSize');
+        const dotSizeValueSpan = document.getElementById('dotSizeValue');
+        const diceSizeSlider = document.getElementById('diceSize');
+        const diceSizeValueSpan = document.getElementById('diceSizeValue');
+        const diceRoundnessSlider = document.getElementById('diceRoundness');
+        const diceRoundnessValueSpan = document.getElementById('diceRoundnessValue');
+        const rollOutputDisplay = document.getElementById('rollOutputDisplay');
+
+        // New elements for Result Analysis Panel
+        const resultsButton = document.getElementById('resultsButton');
+        const resultsPanel = document.getElementById('resultsPanel');
+        const totalRollsDisplay = document.getElementById('totalRollsDisplay');
+        const resultsTableBody = document.getElementById('resultsTableBody');
+
+        // New elements for Monte Carlo Simulation Panel
+        const monteCarloButton = document.getElementById('monteCarloButton');
+        const monteCarloPanel = document.getElementById('monteCarloPanel');
+        const simulationCountInput = document.getElementById('simulationCount');
+        const runSimulationButton = document.getElementById('runSimulationButton');
+
+
+        const allFaces = document.querySelectorAll('.face');
+        const allDots = document.querySelectorAll('.dot');
+        
+        // Roll Output Toggle Logic (MINIMAL, does not change any other logic)
+        const rollOutputRadios = document.querySelectorAll('input[name="rollOutput"]');
+
+        let isRolling = false;
+        let currentRollSpeed = parseInt(rollSpeedSlider.value);
+        let currentDiceColor = diceColorPicker.value;
+        let currentDotColor = dotColorPicker.value;
+        let currentDotSize = parseInt(dotSizeSlider.value);
+        let currentDiceSize = parseInt(diceSizeSlider.value);
+        let currentDiceRoundness = parseInt(diceRoundnessSlider.value);
+
+        // Result Analysis Data
+        let totalRolls = 0;
+        let rollCounts = new Array(6).fill(0); // Array to store counts for each number (index 0 for 1, index 1 for 2, etc.)
+
+        // Listen for toggle changes
+        rollOutputRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'show') {
+                    rollOutputDisplay.style.display = 'block';
+                } else {
+                    rollOutputDisplay.style.display = 'none';
+                }
+            });
+        });
+
+        // Function to generate a cryptographically random number between 1 and 6
+        function getRandomDiceRoll() {
+            const randomArray = new Uint32Array(1);
+            window.crypto.getRandomValues(randomArray);
+            return (randomArray[0] % 6) + 1;
+        }
+
+        // Function to get the CSS transform for a specific dice face
+        function getDiceRotation(roll) {
+            switch (roll) {
+                case 1: return 'rotateX(0deg) rotateY(0deg)';      // Shows face 1 (front)
+                case 2: return 'rotateX(-90deg) rotateY(0deg)';    // Shows face 2 (top)
+                case 3: return 'rotateY(-90deg) rotateX(0deg)';    // Shows face 3 (right)
+                case 4: return 'rotateY(90deg) rotateX(0deg)';     // Shows face 4 (left)
+                case 5: return 'rotateX(90deg) rotateY(0deg)';     // Shows face 5 (bottom)
+                case 6: return 'rotateY(180deg) rotateX(0deg)';    // Shows face 6 (back)
+                default: return 'rotateX(0deg) rotateY(0deg)';
+            }
+        }
+
+        // Function to update the results table
+        function updateResultsTable() {
+            //totalRollsDisplay.textContent = totalRolls;
+            totalRollsDisplay.textContent = totalRolls.toLocaleString('en-IN');
+
+            resultsTableBody.innerHTML = ''; // Clear existing rows
+
+            for (let i = 0; i < 6; i++) {
+                const number = i + 1;
+                const count = rollCounts[i];
+                const probability = totalRolls === 0 ? 0 : ((count / totalRolls) * 100).toFixed(2);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${number}</td>
+                    <td>${count.toLocaleString('en-IN')}</td>
+                    <td>${probability}%</td>
+                `;
+                resultsTableBody.appendChild(row);
+            }
+        }
+
+        // Function to roll the dice (single roll with animation)
+        function rollDice() {
+            // Prevent rolling if already rolling or options panel is open
+            if (isRolling || optionsPanel.classList.contains('active')) {
+                return;
+            }
+
+            isRolling = true;
+            rollOutputDisplay.textContent = ''; // Clear previous output
+
+            const result = getRandomDiceRoll();
+            console.log(`Single Roll: ${result}`); // Log the result
+
+            // Update roll counts and total rolls
+            totalRolls++;
+            rollCounts[result - 1]++; // Adjust for 0-based array index
+
+            const maxTotalDuration = 3000;
+            const minTotalDuration = 500;
+            const speedRange = 9;
+            const durationPerUnit = (maxTotalDuration - minTotalDuration) / speedRange;
+            const totalAnimationDuration = maxTotalDuration - (currentRollSpeed - 1) * durationPerUnit;
+
+            const initialTumbleDuration = totalAnimationDuration * 0.33;
+            const settlingDuration = totalAnimationDuration * 0.67;
+
+            const initialX = Math.random() * 360 * 5 + 360 * 2;
+            const initialY = Math.random() * 360 * 5 + 360 * 2;
+            const initialZ = Math.random() * 360;
+
+            dice.style.transition = `transform ${initialTumbleDuration / 1000}s ease-out`;
+            dice.style.transform = `rotateX(${initialX}deg) rotateY(${initialY}deg) rotateZ(${initialZ}deg)`;
+
+            setTimeout(() => {
+                dice.style.transition = `transform ${settlingDuration / 1000}s ease-out`;
+                const finalRotation = getDiceRotation(result);
+                dice.style.transform = finalRotation;
+            }, initialTumbleDuration);
+
+            setTimeout(() => {
+                isRolling = false;
+                rollOutputDisplay.textContent = result; // Display the result here
+                updateResultsTable(); // Update the results table after each roll
+            }, totalAnimationDuration);
+        }
+
+        // Function to run Monte Carlo Simulation without animation
+        function runMonteCarloSimulation() {
+            const simulationCount = parseInt(simulationCountInput.value);
+
+            if (isNaN(simulationCount) || simulationCount < 1 || simulationCount > 10000000) {
+                console.error("Invalid simulation count. Please enter a number between 1 and 10,000,000.");
+                // In a real app, you'd show a user-friendly message here instead of just console.error
+                return;
+            }
+
+            // Reset global roll counts for the new simulation
+            totalRolls = 0;
+            rollCounts = new Array(6).fill(0);
+
+            // Perform simulation rolls silently
+            for (let i = 0; i < simulationCount; i++) {
+                const result = getRandomDiceRoll();
+                totalRolls++;
+                rollCounts[result - 1]++;
+            }
+
+            console.log(`Monte Carlo Simulation complete for ${simulationCount} rolls.`);
+            console.log("Simulation Results:", rollCounts);
+
+            // Update the results panel with simulation data
+            updateResultsTable();
+
+            // Automatically display the results panel
+            resultsPanel.classList.add('active');
+            // Close other panels
+            optionsPanel.classList.remove('active');
+            monteCarloPanel.classList.remove('active');
+        }
+
+
+        // --- Options Panel Logic ---
+
+        // Toggle options panel visibility
+        optionsButton.addEventListener('click', (event) => {
+            optionsPanel.classList.toggle('active');
+            // Close other panels if options panel is opened
+            if (optionsPanel.classList.contains('active')) {
+                resultsPanel.classList.remove('active');
+                monteCarloPanel.classList.remove('active');
+            }
+            event.stopPropagation(); // Prevent body click from closing or rolling
+        });
+
+        // --- Results Panel Logic ---
+
+        // Toggle results panel visibility
+        resultsButton.addEventListener('click', (event) => {
+            resultsPanel.classList.toggle('active');
+            // Close other panels if results panel is opened
+            if (resultsPanel.classList.contains('active')) {
+                optionsPanel.classList.remove('active');
+                monteCarloPanel.classList.remove('active');
+            }
+            event.stopPropagation(); // Prevent body click from rolling
+        });
+
+        // --- Monte Carlo Panel Logic ---
+        monteCarloButton.addEventListener('click', (event) => {
+            monteCarloPanel.classList.toggle('active');
+            // Close other panels if Monte Carlo panel is opened
+            if (monteCarloPanel.classList.contains('active')) {
+                optionsPanel.classList.remove('active');
+                resultsPanel.classList.remove('active');
+            }
+            event.stopPropagation(); // Prevent body click from rolling
+        });
+
+        // Attach event listener to the "Run Simulation" button
+        runSimulationButton.addEventListener('click', (event) => {
+            runMonteCarloSimulation();
+            event.stopPropagation(); // Prevent body click from rolling after simulation
+        });
+
+
+        // Close panels if clicked outside, and handle dice rolling
+        document.body.addEventListener('click', (event) => {
+            //event.preventDefault();
+            const isClickOnOptionsButton = event.target === optionsButton || optionsButton.contains(event.target);
+            const isClickOnOptionsPanelContent = optionsPanel.contains(event.target);
+            const isClickOnResultsButton = event.target === resultsButton || resultsButton.contains(event.target);
+            const isClickOnResultsPanelContent = resultsPanel.contains(event.target);
+            const isClickOnMonteCarloButton = event.target === monteCarloButton || monteCarloButton.contains(event.target);
+            const isClickOnMonteCarloPanelContent = monteCarloPanel.contains(event.target);
+
+            // Close options panel if active AND the click was NOT on the options button AND NOT inside the options panel
+            if (optionsPanel.classList.contains('active') && !isClickOnOptionsButton && !isClickOnOptionsPanelContent) {
+                optionsPanel.classList.remove('active');
+            }
+
+            // Close results panel if active AND the click was NOT on the results button AND NOT inside the results panel
+            /* if (resultsPanel.classList.contains('active') && !isClickOnResultsButton && !isClickOnResultsPanelContent) {
+                resultsPanel.classList.remove('active');
+            } */
+
+            // Close Monte Carlo panel if active AND the click was NOT on the Monte Carlo button AND NOT inside the Monte Carlo panel
+            if (monteCarloPanel.classList.contains('active') && !isClickOnMonteCarloButton && !isClickOnMonteCarloPanelContent) {
+                monteCarloPanel.classList.remove('active');
+            }
+
+            // Roll the dice ONLY IF:
+            // 1. Dice is not already rolling.
+            // 2. Options panel is NOT active (and the click wasn't on its button/content).
+            // 3. Results panel is NOT active (and the click wasn't on its button/content).
+            // 4. Monte Carlo panel is NOT active (and the click wasn't on its button/content).
+            /* if (!isRolling && !optionsPanel.classList.contains('active') && !resultsPanel.classList.contains('active') && !monteCarloPanel.classList.contains('active')) {
+                rollDice();
+            } */
+            if (!isRolling && !optionsPanel.classList.contains('active') && !monteCarloPanel.classList.contains('active')) {
+                rollDice();
+            }
+        });
+
+        // Update rolling speed
+        rollSpeedSlider.addEventListener('input', (event) => {
+            currentRollSpeed = parseInt(event.target.value);
+            rollSpeedValueSpan.textContent = currentRollSpeed;
+        });
+
+        // Update dice color
+        diceColorPicker.addEventListener('input', (event) => {
+            currentDiceColor = event.target.value;
+            root.style.setProperty('--dice-color', currentDiceColor);
+        });
+
+        // Update dot color
+        dotColorPicker.addEventListener('input', (event) => {
+            currentDotColor = event.target.value;
+            root.style.setProperty('--dot-color', currentDotColor);
+        });
+
+        // Update dot size
+        dotSizeSlider.addEventListener('input', (event) => {
+            currentDotSize = parseInt(event.target.value);
+            dotSizeValueSpan.textContent = `${currentDotSize}px`;
+            root.style.setProperty('--dot-size', `${currentDotSize}px`);
+        });
+
+        // Update dice size
+        diceSizeSlider.addEventListener('input', (event) => {
+            currentDiceSize = parseInt(event.target.value);
+            diceSizeValueSpan.textContent = `${currentDiceSize}px`;
+            root.style.setProperty('--dice-size', `${currentDiceSize}px`);
+        });
+
+        // Update dice roundness
+        diceRoundnessSlider.addEventListener('input', (event) => {
+            currentDiceRoundness = parseInt(event.target.value);
+            diceRoundnessValueSpan.textContent = `${currentDiceRoundness}px`;
+            root.style.setProperty('--dice-roundness', `${currentDiceRoundness}px`);
+        });
+
+        // Initial application of default values and setup
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial CSS variables based on JS defaults
+            root.style.setProperty('--dice-size', `${currentDiceSize}px`);
+            root.style.setProperty('--dot-size', `${currentDotSize}px`);
+            root.style.setProperty('--dice-color', currentDiceColor);
+            root.style.setProperty('--dot-color', currentDotColor);
+            root.style.setProperty('--dice-roundness', `${currentDiceRoundness}px`);
+
+            // Update displayed values for sliders
+            rollSpeedValueSpan.textContent = currentRollSpeed;
+            dotSizeValueSpan.textContent = `${currentDotSize}px`;
+            diceSizeValueSpan.textContent = `${currentDiceSize}px`;
+            diceRoundnessValueSpan.textContent = `${currentDiceRoundness}px`;
+
+            // Initialize the results table
+            updateResultsTable();
+        });
+
+    </script>
+</body>
+</html>
